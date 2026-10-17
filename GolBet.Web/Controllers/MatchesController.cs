@@ -1,4 +1,4 @@
-﻿// GolBet.Web/Controllers/MatchesController.cs  (versión completa, Módulo 7)
+﻿// GolBet.Web/Controllers/MatchesController.cs  (Taller: buscador de partidos)
 
 using GolBet.Entities.Enums;
 using GolBet.Repositories.Data;          // DbSeeder.AdminRole
@@ -21,13 +21,16 @@ public class MatchesController : Controller
         _teamService = teamService;
     }
 
-    // GET /Matches                   -> all matches
-    // GET /Matches?status=Scheduled  -> filtered board
-    // Public: anonymous users can see the board
-    public async Task<IActionResult> Index(MatchStatus? status)
+    // GET /Matches                                   -> all matches
+    // GET /Matches?status=Scheduled                  -> filtered board
+    // GET /Matches?search=nacional                   -> search by team name
+    // GET /Matches?search=nacional&status=Scheduled  -> search + filter
+    
+    public async Task<IActionResult> Index(MatchStatus? status, string? search)
     {
         ViewBag.CurrentStatus = status;
-        var board = await _matchService.GetBoardAsync(status);
+        ViewBag.CurrentSearch = search;
+        var board = await _matchService.GetBoardAsync(status, search);
         return View(board);
     }
 
@@ -40,14 +43,16 @@ public class MatchesController : Controller
         if (match is null) return NotFound();   // HTTP 404
         return View(match);
     }
-    [Authorize(Roles = DbSeeder.AdminRole)]
-    // GET /Matches/Create 
-    public async Task<IActionResult> Create()
 
+    // GET /Matches/Create
+    [Authorize(Roles = DbSeeder.AdminRole)]
+    public async Task<IActionResult> Create()
     {
         await LoadTeamsAsync();
         return View(new MatchFormDto());
     }
+
+    // POST /Matches/Create
     [Authorize(Roles = DbSeeder.AdminRole)]
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(MatchFormDto dto)
@@ -57,33 +62,33 @@ public class MatchesController : Controller
             await LoadTeamsAsync();
             return View(dto);
         }
+
         try
         {
             await _matchService.CreateAsync(dto);
             TempData["Success"] = "Partido creado correctamente.";
             return RedirectToAction(nameof(Index));
         }
-        catch (InvalidOperationException ex)      // business rule violated 
+        catch (InvalidOperationException ex)      // business rule violated
         {
             ModelState.AddModelError(string.Empty, ex.Message);
             await LoadTeamsAsync();
             return View(dto);
         }
-
     }
 
+    // GET /Matches/Edit/5
     [Authorize(Roles = DbSeeder.AdminRole)]
-    // GET /Matches/Edit/5 
     public async Task<IActionResult> Edit(int id)
     {
         var dto = await _matchService.GetForEditAsync(id);
         if (dto is null) return NotFound();
-        await LoadTeamsAsync(); // the form needs the dropdowns too 
+        await LoadTeamsAsync(); // the form needs the dropdowns too
         return View(dto);
     }
 
+    // POST /Matches/Edit
     [Authorize(Roles = DbSeeder.AdminRole)]
-    // POST /Matches/Edit 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(MatchFormDto dto)
     {
@@ -99,19 +104,18 @@ public class MatchesController : Controller
             TempData["Success"] = "Partido actualizado correctamente.";
             return RedirectToAction(nameof(Index));
         }
-        catch (InvalidOperationException ex)      // business rule violated 
+        catch (InvalidOperationException ex)      // business rule violated
         {
             ModelState.AddModelError(string.Empty, ex.Message);
             await LoadTeamsAsync();
             return View(dto);
         }
-
     }
 
+    // POST /Matches/Deactivate/5
     [Authorize(Roles = DbSeeder.AdminRole)]
-    // POST /Matches/Deactivate/5 
     [HttpPost, ValidateAntiForgeryToken]
- public async Task<IActionResult> Deactivate(int id)
+    public async Task<IActionResult> Deactivate(int id)
     {
         await _matchService.DeactivateAsync(id);
         TempData["Success"] = "Partido desactivado.";

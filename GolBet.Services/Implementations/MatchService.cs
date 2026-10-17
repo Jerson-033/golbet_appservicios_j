@@ -1,4 +1,4 @@
-﻿// GolBet.Services/Implementations/MatchService.cs 
+﻿// GolBet.Services/Implementations/MatchService.cs
 
 using AutoMapper;
 using GolBet.Entities;
@@ -9,6 +9,7 @@ using GolBet.Services.Helpers;
 using GolBet.Services.Interfaces;
 
 namespace GolBet.Services.Implementations;
+
 public class MatchService : IMatchService
 {
     private readonly IMatchRepository _matchRepository;
@@ -20,9 +21,9 @@ public class MatchService : IMatchService
 
     }
 
-    public async Task<IEnumerable<MatchDto>> GetBoardAsync(MatchStatus? status = null)
+    public async Task<IEnumerable<MatchDto>> GetBoardAsync(MatchStatus? status = null, string? search = null)
     {
-        var matches = await _matchRepository.GetAllWithTeamsAsync(status);
+        var matches = await _matchRepository.GetAllWithTeamsAsync(status, search);
         return _mapper.Map<IEnumerable<MatchDto>>(matches);
     }
 
