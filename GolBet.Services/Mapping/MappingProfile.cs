@@ -21,14 +21,17 @@ public class MappingProfile : Profile
         // GolBet.Services/Mapping/MappingProfile.cs  (agregar dentro del constructor) 
 
         CreateMap<Match, MatchDetailDto>()
-
-            .ForMember(dto => dto.TotalBets,
-
-                       options => options.MapFrom(match => match.Bets.Count));
+                .ForMember(dto => dto.TotalBets,
+                           options => options.MapFrom(match => match.Bets.Count));
 
         CreateMap<Team, TeamDto>();
         CreateMap<TeamFormDto, Team>().ReverseMap();
         CreateMap<MatchFormDto, Match>().ReverseMap();
+
+        CreateMap<Bet, BetDto>()
+              .ForMember(dto => dto.PotentialPayout,
+                     options => options.MapFrom(bet => bet.Amount * bet.OddsAtPlacement));
+
     }
 
 }
