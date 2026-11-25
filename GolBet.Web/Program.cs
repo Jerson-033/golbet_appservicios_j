@@ -8,6 +8,7 @@ using GolBet.Services.Mapping;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using Serilog;
 
 var culture = new CultureInfo("es-CO");
 // Dates in Spanish; numbers neutral so model binding reads "2.5" correctly
@@ -18,6 +19,9 @@ CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, config) =>
+    config.ReadFrom.Configuration(context.Configuration));
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
@@ -60,6 +64,25 @@ builder.Services.AddScoped<IBetService, BetService>();
 
 var app = builder.Build();
 
+// Unhandled exceptions (500): friendly page in production,
+// full yellow stack trace while developing
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error/General");
+    app.UseHsts();
+}
+
+// Status codes without a body (404 and friends): re-execute
+// the pipeline against our ErrorController
+app.UseStatusCodePagesWithReExecute("/Error/{0}");
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseSerilogRequestLogging();
+app.UseRouting();
+app.UseAuthentication();   // who are you?
+app.UseAuthorization();    // may you do this?
+
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -68,23 +91,6 @@ using (var scope = app.Services.CreateScope())
 
     await DbSeeder.SeedAsync(context, roleManager, userManager);
 }
-
-
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
-
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-
-app.UseRouting();
-
-app.UseAuthentication();   // who are you?  (reads the cookie, builds User)
-app.UseAuthorization();    // may you do this?  (evaluates [Authorize])
 
 app.MapControllerRoute(
     name: "default",
